@@ -203,3 +203,17 @@ void FileDescriptor::set_blocking( bool blocking )
 
   internal_fd_->non_blocking_ = not blocking;
 }
+
+// The CheckSystemCall templates are declared in file_descriptor.hh but defined
+// in this translation unit. Other translation units (e.g. socket.cc, tun.cc)
+// call them with only the declaration visible, so we must emit the
+// instantiations here explicitly: GCC happens to emit the implicit
+// instantiations as weak symbols, but Clang (with optimization enabled, e.g.
+// the -O2 that nixpkgs' clang wrapper adds by default) can inline the only
+// in-TU call sites and drop the out-of-line symbols, which makes the link
+// fail with "undefined reference to FileDescriptor::CheckSystemCall<...>".
+// These two types cover every call site in the codebase:
+//   - int    : fcntl(2), close(2), socket(2), bind(2), connect(2), ...
+//   - long   : writev(2), recvfrom(2), sendto(2), send(2)  (ssize_t == long)
+template int FileDescriptor::CheckSystemCall( std::string_view, int ) const;
+template long FileDescriptor::CheckSystemCall( std::string_view, long ) const;
